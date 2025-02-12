@@ -1,34 +1,32 @@
 import { Col, Image, Row, Button, Modal, Form } from "react-bootstrap";
-import { useState, useEffect } from "react"
-import axios from "axios"
-import useLocalStorage from "use-local-storage";
+import { useState, useEffect, useContext } from "react"
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "./AuthProvider";
+import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
 
 export default function AuthPage() {
     const loginImage = "/pictures/pawprint.gif"
     const nekoma = "/pictures/black-cat.png"
-    const url = "https://0633db12-ed2a-46cf-86a1-1d5bf40fdcf9-00-13k1iufshnshf.kirk.replit.dev"
 
     const [modalShow, setModalShow] = useState(null)
     const handleShowSignUp = () => setModalShow("SignUp")
     const handleShowLogin = () => setModalShow("Login")
     const [username, setUsername] = useState("")
     const [password, setPassword] = useState("")
-    const [authToken, setauthToken] = useLocalStorage("authToken", "")
     const navigate = useNavigate()
+    const auth = getAuth()
+    const { currentUser } = useContext(AuthContext)
 
     useEffect(() => {
-        if (authToken) {
-            navigate("/loading")
-        }
-    }, [authToken, navigate])
+        if (currentUser) navigate("/loading")
+    }, [currentUser, navigate])
 
     const handleSignUp = async (e) => {
         e.preventDefault()
         try {
-            const res = await axios.post(`${url}/signup`, { username, password })
-            console.log(res.data)
+            const res = await createUserWithEmailAndPassword(auth, username, password)
+            console.log(res.user)
         } catch (error) {
             console.error(error)
         }
@@ -37,11 +35,7 @@ export default function AuthPage() {
     const handleLogin = async (e) => {
         e.preventDefault()
         try {
-            const res = await axios.post(`${url}/login`, { username, password })
-            if (res.data && res.data.auth === true && res.data.token) {
-                setauthToken(res.data.token)
-                console.log("Login Purr-fectly, token saved")
-            }
+            await signInWithEmailAndPassword(auth, username, password)
         } catch (error) {
             console.error(error)
         }

@@ -6,7 +6,7 @@ export default function Icons({ isTop, className, onClick, text }) {
     if (isTop) {
         margin = "light rounded-pill my-3"
     } else {
-        margin = "light rounded-pill "
+        margin = "light rounded-pill my-1 border border-1"
     }
 
     const iconMargin = text ? "mxe-3" : ""
