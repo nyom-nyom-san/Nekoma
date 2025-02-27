@@ -1,5 +1,6 @@
 import { Col, Row } from "react-bootstrap";
 import Charts from "./Charts"
+import View from "./View"
 // import { useState, useEffect } from "react";
 
 
@@ -14,9 +15,11 @@ export default function MidBody() {
 
 
     return (
-        <Col sm={10} style={{ border: "1px solid #3d6663", backgroundColor: "#e2eceb", borderRadius: "10px", marginTop: "3px" }}>
+        <Col sm={10} style={{ border: "1px solid #3d6663", backgroundColor: "#e2eceb", borderRadius: "10px", marginTop: "10px" }}>
             <Row>
                 <Charts />
+                <h3>Finance Goals</h3>
+                <View />
             </Row>
         </Col>
     )

@@ -4,9 +4,8 @@ import EditGoal from "../goal/EditGoal";
 import { ProgressBar } from "react-bootstrap";
 import ExpenseTracker from '../components/ExpenseTracker'
 
-
 export default function FMidBody() {
-    const [goals, setGoals] = useState(getGoals()); // Load goals
+    const [goals, setGoals] = useState(() => getGoals());
     const [selectGoal, setSelectGoal] = useState(null);
     const [showModal, setShowModal] = useState(false);
 
@@ -20,49 +19,56 @@ export default function FMidBody() {
             id: Date.now(), // Unique ID
             title: "Set Your Goal",
             targetAmount: 0,
-            currentAmount: "0",
+            currentAmount: 0,
         };
 
-        const updatedGoals = [...goals, newGoal];  // Add new goal to state
-        setGoals(updatedGoals);
-        localStorage.setItem("financeGoals", JSON.stringify(updatedGoals));
-
+        setGoals(prevGoals => {
+            const updatedGoals = [...prevGoals, newGoal];
+            localStorage.setItem("financeGoals", JSON.stringify(updatedGoals));
+            return updatedGoals;
+        });
         setSelectGoal(newGoal)
         setShowModal(true)
     }
 
     //Edit Goals
     function editGoal(id, updatedData) {
-        const updatedGoals = goals.map(goal => {
-            if (goal.id === id) {
-                let newAmount = updatedData.currentAmount;
+        setGoals(prevGoals => {
+            const updatedGoals = prevGoals.map(goal => {
+                if (goal.id === id) {
+                    let newAmount = updatedData.currentAmount ?? goal.currentAmount;
 
-                // Prevent currentAmount from exceeding targetAmount
-                if (newAmount > goal.targetAmount) {
-                    newAmount = goal.targetAmount;
+                    if (newAmount > updatedData.targetAmount) {
+                        newAmount = updatedData.targetAmount;
+                    }
+
+                    return { ...goal, ...updatedData, currentAmount: newAmount };
                 }
+                return goal;
+            });
 
-                return { ...goal, ...updatedData, currentAmount: newAmount };
-            }
-            return goal;
+            localStorage.setItem("financeGoals", JSON.stringify(updatedGoals));
+            return updatedGoals;
         });
-
-        localStorage.setItem("financeGoals", JSON.stringify(updatedGoals));
-        setGoals(updatedGoals);
     }
 
     //Delete Goals
-
     const deleteGoal = (id) => {
-        let updatedGoals = getGoals().filter(goal => goal.id !== id)
-
-        localStorage.setItem("financeGoals", JSON.stringify(updatedGoals))
-        setGoals(updatedGoals)
+        setGoals(prevGoals => {
+            const updatedGoals = prevGoals.filter(goal => goal.id !== id)
+            localStorage.setItem("financeGoals", JSON.stringify(updatedGoals))
+            return updatedGoals
+        })
     }
 
     function handleEditClick(goal) {
         setSelectGoal(goal);
         setShowModal(true);
+    }
+
+    function handleClose() {
+        setShowModal(false)
+        setSelectGoal(null)
     }
 
 
@@ -122,7 +128,7 @@ export default function FMidBody() {
             {/* Edit Modal */}
             <EditGoal
                 show={showModal}
-                handleClose={() => setShowModal(false)}
+                handleClose={handleClose}
                 goal={selectGoal}
                 onSave={editGoal}
             />

@@ -13,7 +13,7 @@ export default function SideBar({ handleLogout, handleAddBooking, home, finance 
 
 
             <Icons className="bi bi-home" text="Home" onClick={home} />
-            <Icons className="bi bi-bookmarks" text="Booking" onClick={handleAddBooking} />
+            <Icons className="bi bi-bookmarks" text="Habit" onClick={handleAddBooking} />
             <Icons text="Finance" onClick={finance} />
             <Icons className="bi bi-envelope" text="Chatbot" />
             <Icons text="Logout" onClick={handleLogout} />
