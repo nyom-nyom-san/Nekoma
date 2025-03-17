@@ -1,139 +1,190 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { db, auth } from '../firebase'
+import { doc, setDoc, getDoc } from 'firebase/firestore'
 // import { ProgressBar } from 'react-bootstrap'
 
 export default function Habit() {
 
-    const [habitName, setHabitName] = useState("")
+    const [habitName, setHabitName] = useState("");
     const [habits, setHabits] = useState([]);
+    const [habitDays, setHabitDays] = useState([]);
     const [showModal, setShowModal] = useState(false);
-    const [editHName, setEditHName] = useState("")
-    const [editId, setEditId] = useState(null)
-    const [habitDays, setHabitDays] = useState([
-        { date: new Date().toISOString().split('T')[0], habits: [] }
-    ])
+    const [editHName, setEditHName] = useState("");
+    const [editId, setEditId] = useState(null);
 
-    //Add new Day with the same habits...
-    function addToday() {
+    // Save habitDays to Firestore
+    async function saveHabitDaysToFirestore(habitDays) {
+        const user = auth.currentUser;
+        if (!user) {
+            console.error("No user is signed in");
+            return;
+        }
+
+        try {
+            await setDoc(doc(db, "users", user.uid, "habitDays", "current"), {
+                habitDays,
+                timestamp: new Date()
+            });
+            console.log("Habit days saved");
+        } catch (error) {
+            console.error("Error saving habit days", error);
+        }
+    }
+
+    // Reset habits to default
+    const generateId = () => crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).substr(2);
+    const resetHabits = useCallback(async () => {
+        const user = auth.currentUser;
+        if (!user) {
+            console.error("No user is signed in");
+            return;
+        }
+
+        const defaultHabits = [
+            { id: generateId(), title: "Exercise", completed: false },
+            { id: generateId(), title: "Reading", completed: false },
+            { id: generateId(), title: "8 hours sleep", completed: false },
+        ];
+
+        setHabits(defaultHabits);
+        setHabitDays([{
+            date: new Date().toISOString().split("T")[0],
+            habits: defaultHabits.map(h => ({ ...h }))
+        }]);
+
+        // Save to Firestore
+        try {
+            await setDoc(doc(db, "users", user.uid, "habitDays", "current"), {
+                habitDays: [{
+                    date: new Date().toISOString().split("T")[0],
+                    habits: defaultHabits
+                }],
+                timestamp: new Date()
+            });
+            console.log("Habit reset and saved");
+        } catch (error) {
+            console.error("Error saving habit days", error);
+        }
+    }, []);
+
+    // Fetch habitDays on component mount
+    useEffect(() => {
+        async function fetchHabitDays() {
+            const user = auth.currentUser;
+            if (!user) {
+                console.error("No user is signed in");
+                return;
+            }
+
+            try {
+                const docRef = doc(db, "users", user.uid, "habitDays", "current");
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setHabitDays(data.habitDays);
+                    setHabits(data.habitDays[0]?.habits || []); // Set habits from the first day
+                } else {
+                    resetHabits(); // Initialize default habits if no data exists
+                }
+            } catch (error) {
+                console.error("Error loading data", error);
+            }
+        }
+
+        fetchHabitDays();
+    }, [resetHabits]);
+
+    // Add new day with the same habits
+    async function addToday() {
+        const user = auth.currentUser;
+        if (!user) {
+            console.error("No user is signed in");
+            return;
+        }
+
         const today = new Date().toISOString().split('T')[0];
 
         if (habitDays.some(day => day.date === today)) return;
+        if (habits.length === 0) return;
 
-        // Copy the latest habits
         const newDay = { date: today, habits: habits.map(habit => ({ ...habit, completed: false })) };
 
         setHabitDays(prevDays => {
             const updatedDays = [...prevDays, newDay];
-            localStorage.setItem("habitDays", JSON.stringify(updatedDays));
+            saveHabitDaysToFirestore(updatedDays);
             return updatedDays;
         });
     }
 
-    useEffect(() => {
-        const storedHabits = JSON.parse(localStorage.getItem("habits"));
-        if (Array.isArray(storedHabits) && storedHabits.length > 0) {
-            setHabits(storedHabits);
-        } else {
-            resetHabits();
-        }
-
-        const storedHabitDays = JSON.parse(localStorage.getItem("habitDays"));
-        if (Array.isArray(storedHabitDays) && storedHabitDays.length > 0) {
-            setHabitDays(storedHabitDays);
-        } else {
-            setHabitDays([{
-                date: new Date().toISOString().split('T')[0],
-                habits: []
-            }])
-        }
-    }, []);
-
-    //Local Storage Sync
-    useEffect(() => {
-        localStorage.setItem("habitDays", JSON.stringify(habitDays));
-    }, [habitDays]);
-
-    useEffect(() => {
-        localStorage.setItem("habits", JSON.stringify(habits));
-    }, [habits]);
-
-    //Add new Habit
-    function addHabits(habitName) {
-        if (!habitName.trim()) return;
-
-        if (habits.some(habit => habit.title.toLowerCase() === habitName.toLowerCase())) {
-            alert("The habit has already existed.");
+    // Add new habit
+    async function addHabits(habitName) {
+        const user = auth.currentUser;
+        if (!user) {
+            console.error("No user is signed in");
             return;
         }
 
-        const newHabit = {
-            id: generateId(),
-            title: habitName,
-            completed: false
-        };
+        if (!habitName.trim()) return;
+
+        if (habits.some(habit => habit.title.toLowerCase() === habitName.toLowerCase())) {
+            alert("Habit already exists");
+            return;
+        }
+
+        const newHabit = { id: generateId(), title: habitName, completed: false };
 
         setHabits(prevHabits => {
             const updatedHabits = [...prevHabits, newHabit];
-            localStorage.setItem("habits", JSON.stringify(updatedHabits));
-
-            // Update all habitDays with the new habit
-            setHabitDays(prevDays => {
-                const today = new Date().toISOString().split('T')[0]
-                return prevDays.map(day => {
-                    if (new Date(day.date) >= new Date(today)) {
-                        return {
-                            ...day,
-                            habits: [...day.habits, { ...newHabit }]
-                        }
-                    }
-                    return day
-                })
-            });
-
             return updatedHabits;
+        });
+
+        // Update all habitDays with the new habit
+        setHabitDays(prevDays => {
+            const today = new Date().toISOString().split('T')[0];
+            const updatedDays = prevDays.map(day => {
+                if (new Date(day.date) >= new Date(today)) {
+                    return {
+                        ...day,
+                        habits: [...day.habits, { ...newHabit }]
+                    };
+                }
+                return day;
+            });
+            saveHabitDaysToFirestore(updatedDays);
+            return updatedDays;
         });
 
         setHabitName("");
     }
 
+    // Toggle habit completion
     function toggleHabit(dayIndex, habitId) {
-        setHabitDays(prevDays =>
-            prevDays.map((day, index) =>
+        setHabitDays(prevDays => {
+            const updatedDays = prevDays.map((day, index) =>
                 index === dayIndex ? {
                     ...day,
                     habits: day.habits.map(habit =>
                         habit.id === habitId ? { ...habit, completed: !habit.completed } : habit
                     )
                 } : day
-            )
-        );
+            );
+            saveHabitDaysToFirestore(updatedDays); // Save to Firestore
+            return updatedDays;
+        });
     }
 
-    //reset Habits
-    const generateId = () => crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).substr(2);
-    function resetHabits() {
-        const defaultHabits = [
-            { id: generateId(), title: "Exercise", completed: false },
-            { id: generateId(), title: "Reading", completed: false },
-            { id: generateId(), title: "8 hours sleep", completed: false },
-        ]
-        setHabits(defaultHabits)
-        setHabitDays([{
-            date: new Date().toISOString().split("T")[0],
-            habits: defaultHabits.map(h => ({ ...h }))
-        }])
+    // Delete habit
+    async function deleteHabit(id) {
+        const user = auth.currentUser;
+        if (!user) {
+            console.error("No user is signed in");
+            return;
+        }
 
-        localStorage.setItem("habits", JSON.stringify(defaultHabits))
-        localStorage.setItem("habitDays", JSON.stringify([{
-            date: new Date().toISOString().split("T")[0],
-            habits: defaultHabits
-        }]))
-    }
-
-    //Delete Habit
-    function deleteHabit(id) {
         setHabits(prev => {
             const updated = prev.filter(h => h.id !== id);
-            localStorage.setItem("habits", JSON.stringify(updated));
+            saveHabitDaysToFirestore(updated);
             return updated;
         });
 
@@ -142,47 +193,63 @@ export default function Habit() {
                 ...day,
                 habits: day.habits.filter(h => h.id !== id)
             }));
-            localStorage.setItem("habitDays", JSON.stringify(updated));
+            saveHabitDaysToFirestore(updated);
             return updated;
         });
     }
-    //Confirm Delete
 
+    // Confirm delete
     function confirmDelete(id) {
-        const isConfirmed = window.confirm("Are you sure to delete this habit?")
+        const isConfirmed = window.confirm("Are you sure to delete this habit?");
         if (isConfirmed) {
-            deleteHabit(id)
+            deleteHabit(id);
         }
     }
 
-
-    //Opening Modal
+    // Open modal
     function openModal(habit) {
-        setEditHName(habit.title)
-        setEditId(habit.id)
-        setShowModal(true)
+        setEditHName(habit.title);
+        setEditId(habit.id);
+        setShowModal(true);
     }
 
-    function saveEditedHabit() {
-        setHabits(prev => prev.map(h =>
-            h.id === editId ? { ...h, title: editHName } : h
-        ));
+    // Save edited habit
+    async function saveEditedHabit() {
+        const user = auth.currentUser;
+        if (!user) {
+            console.error("No user is signed in");
+            return;
+        }
 
-        setHabitDays(prev => prev.map(day => ({
-            ...day,
-            habits: day.habits.map(h =>
+        setHabits(prev => {
+            const updated = prev.map(h =>
                 h.id === editId ? { ...h, title: editHName } : h
-            )
-        })));
+            );
+            saveHabitDaysToFirestore(updated);
+            return updated;
+        });
+
+        setHabitDays(prev => {
+            const updated = prev.map(day => ({
+                ...day,
+                habits: day.habits.map(h =>
+                    h.id === editId ? { ...h, title: editHName } : h
+                )
+            }));
+            saveHabitDaysToFirestore(updated);
+            return updated;
+        });
+
+        setShowModal(false);
     }
 
-    //Progress Bar
+    // Progress bar
     const todayHabits = habitDays.find(day =>
         day.date === new Date().toISOString().split('T')[0]
-    )?.habits || []
-    const completedCount = todayHabits.filter(h => h.completed).length
-    const totalCount = todayHabits.length
-    const progressPercentage = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100)
+    )?.habits || [];
+    const completedCount = todayHabits.filter(h => h.completed).length;
+    const totalCount = todayHabits.length;
+    const progressPercentage = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
 
     return (
         <div style={{ backgroundColor: "#c5e8e8" }}>

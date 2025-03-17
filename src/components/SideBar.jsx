@@ -7,7 +7,28 @@ export default function SideBar({ handleLogout, handleAddBooking, home, finance 
 
 
     return (
-        <Col sm={2} className="d-flex flex-column justify-content-start align-items-start vh-100 gap-3" style={{ backgroundColor: "#508682", borderRadius: "10px", marginLeft: "-110px", marginRight: "10px", marginTop: "10px" }}>
+        <Col sm={2} className="d-flex flex-column justify-content-start align-items-start vh-100 gap-3"
+            style={{
+                backgroundColor: "#508682",
+                borderRadius: "10px",
+                marginLeft: "-110px",
+                marginRight: "10px",
+                marginTop: "10px",
+                top: 0,
+                left: 0,
+                height: "100vh",
+                // zIndex: 1000,
+                // position: "fixed",
+                // top: 0,
+                // left: 0,
+                // height: "100vh",
+                // borderRadius: "10px",
+                // flexDirection: "column",
+                // alignItems: "center",
+
+
+
+            }}>
             <Image src={nekoma} style={{ width: "100px", marginTop: "5vh", marginBottom: "5vh" }} istop="true" />
             <i style={{ fontSize: 30, fontWeight: "Bold" }}>NEKOMA</i>
 
