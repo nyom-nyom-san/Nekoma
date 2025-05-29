@@ -1,7 +1,7 @@
 import { Col, Row } from "react-bootstrap";
 import Charts from "./Charts"
 import View from "./View"
-import HabitView from "./habitview";
+import HabitView from "./HabitView";
 // import { useState, useEffect } from "react";
 
 
@@ -21,7 +21,6 @@ export default function MidBody() {
                 <Charts />
                 <h3>Finance Goals</h3>
                 <View />
-                <h1>Hola</h1>
                 <HabitView />
             </Row>
         </Col>

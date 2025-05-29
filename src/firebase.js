@@ -3,7 +3,6 @@ import { getAuth } from "firebase/auth";
 import { getFirestore, initializeFirestore, persistentLocalCache } from "firebase/firestore";
 
 // ✅ Ensure environment variables are loaded correctly
-console.log("🔥 Firebase API Key:", import.meta.env.VITE_FIREBASE_API_KEY);
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,

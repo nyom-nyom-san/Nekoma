@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { db, auth } from '../firebase'
-import { doc, setDoc, getDoc } from 'firebase/firestore'
+import { getAuth } from 'firebase/auth';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 // import { ProgressBar } from 'react-bootstrap'
 
 export default function Habit() {
@@ -13,26 +14,30 @@ export default function Habit() {
     const [editId, setEditId] = useState(null);
 
     // Save habitDays to Firestore
-    async function saveHabitDaysToFirestore(habitDays) {
+    async function saveHabitDaysToFirestore(updatedHabitDays) {
         const user = auth.currentUser;
         if (!user) {
             console.error("No user is signed in");
             return;
         }
 
+        const docRef = doc(db, "users", user.uid, "habitDays", "current");
+
+        const dataToSave = { days: updatedHabitDays }
+
         try {
-            await setDoc(doc(db, "users", user.uid, "habitDays", "current"), {
-                habitDays,
-                timestamp: new Date()
-            });
-            console.log("Habit days saved");
+            await setDoc(docRef, dataToSave)
+            console.log("Habit days saved successfully.")
+            console.log("Data saved:", dataToSave);
         } catch (error) {
-            console.error("Error saving habit days", error);
+            console.error("Error saving habit days", error)
         }
     }
 
-    // Reset habits to default
+    //Random generated id
     const generateId = () => crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).substr(2);
+
+    //Reset habits 
     const resetHabits = useCallback(async () => {
         const user = auth.currentUser;
         if (!user) {
@@ -46,54 +51,74 @@ export default function Habit() {
             { id: generateId(), title: "8 hours sleep", completed: false },
         ];
 
-        setHabits(defaultHabits);
-        setHabitDays([{
+
+        const newDaysArray = [{
             date: new Date().toISOString().split("T")[0],
             habits: defaultHabits.map(h => ({ ...h }))
-        }]);
+        }];
 
-        // Save to Firestore
+        setHabitDays(newDaysArray);
+        setHabits(defaultHabits);
+
+        const dataToSave = {
+            days: newDaysArray,
+            timestamp: new Date()
+        };
+
+        // Save to Firestore 
         try {
-            await setDoc(doc(db, "users", user.uid, "habitDays", "current"), {
-                habitDays: [{
-                    date: new Date().toISOString().split("T")[0],
-                    habits: defaultHabits
-                }],
-                timestamp: new Date()
-            });
-            console.log("Habit reset and saved");
+            await setDoc(doc(db, "users", user.uid, "habitDays", "current"), dataToSave);
+            console.log("Habit reset and saved successfully");
         } catch (error) {
-            console.error("Error saving habit days", error);
+            console.error("Error saving habit days during reset:", error);
         }
     }, []);
 
-    // Fetch habitDays on component mount
+    // Fetch data
     useEffect(() => {
-        async function fetchHabitDays() {
-            const user = auth.currentUser;
-            if (!user) {
-                console.error("No user is signed in");
-                return;
-            }
-
-            try {
+        const authInstance = getAuth();
+        const unsubscribeAuth = authInstance.onAuthStateChanged(user => {
+            if (user) {
+                console.log("user is signed in, setting up listener");
                 const docRef = doc(db, "users", user.uid, "habitDays", "current");
-                const docSnap = await getDoc(docRef);
 
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    setHabitDays(data.habitDays);
-                    setHabits(data.habitDays[0]?.habits || []); // Set habits from the first day
-                } else {
-                    resetHabits(); // Initialize default habits if no data exists
-                }
-            } catch (error) {
-                console.error("Error loading data", error);
+                const unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+                    let daysArray = [];
+
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        console.log("Fetched data:", data);
+
+                        if (data && data.days) {
+                            if (Array.isArray(data.days)) {
+                                daysArray = data.days;
+                            } else if (typeof data.days === 'object' && data.days !== null) {
+                                console.warn("Firestore 'days' field is an object, converting to array");
+                                daysArray = Object.values(data.days);
+                            }
+                        }
+
+                    } else {
+                        console.log("No 'current' document found. setting empty state");
+                    }
+
+                    setHabitDays(daysArray);
+
+                }, (error) => {
+                    console.error("Error fetching habit days", error);
+                    setHabitDays([]);
+                });
+
+                return () => unsubscribeSnapshot();
+
+            } else {
+                console.error("User is not signed in. Clearing state.");
+                setHabitDays([]);
             }
-        }
+        });
 
-        fetchHabitDays();
-    }, [resetHabits]);
+        return () => unsubscribeAuth();
+    }, []);
 
     // Add new day with the same habits
     async function addToday() {
@@ -105,13 +130,13 @@ export default function Habit() {
 
         const today = new Date().toISOString().split('T')[0];
 
-        if (habitDays.some(day => day.date === today)) return;
+        if (habitDays[today]) return;
         if (habits.length === 0) return;
 
         const newDay = { date: today, habits: habits.map(habit => ({ ...habit, completed: false })) };
 
         setHabitDays(prevDays => {
-            const updatedDays = [...prevDays, newDay];
+            const updatedDays = { ...prevDays, [today]: newDay };
             saveHabitDaysToFirestore(updatedDays);
             return updatedDays;
         });
@@ -160,18 +185,21 @@ export default function Habit() {
 
     // Toggle habit completion
     function toggleHabit(dayIndex, habitId) {
-        setHabitDays(prevDays => {
-            const updatedDays = prevDays.map((day, index) =>
-                index === dayIndex ? {
-                    ...day,
-                    habits: day.habits.map(habit =>
-                        habit.id === habitId ? { ...habit, completed: !habit.completed } : habit
-                    )
-                } : day
-            );
-            saveHabitDaysToFirestore(updatedDays); // Save to Firestore
-            return updatedDays;
-        });
+        setHabitDays(prevDaysArray => {
+            const updatedDaysArray = prevDaysArray.map((day, index) => {
+                if (index === dayIndex) {
+                    return {
+                        ...day,
+                        habits: day.habits.map(habit =>
+                            habit.id === habitId ? { ...habit, completed: !habit.completed } : habit
+                        )
+                    }
+                }
+                return day
+            })
+            saveHabitDaysToFirestore(updatedDaysArray)
+            return updatedDaysArray
+        })
     }
 
     // Delete habit
@@ -182,11 +210,7 @@ export default function Habit() {
             return;
         }
 
-        setHabits(prev => {
-            const updated = prev.filter(h => h.id !== id);
-            saveHabitDaysToFirestore(updated);
-            return updated;
-        });
+        setHabits(prev => prev.filter(h => h.id !== id))
 
         setHabitDays(prev => {
             const updated = prev.map(day => ({
@@ -222,11 +246,8 @@ export default function Habit() {
         }
 
         setHabits(prev => {
-            const updated = prev.map(h =>
-                h.id === editId ? { ...h, title: editHName } : h
-            );
-            saveHabitDaysToFirestore(updated);
-            return updated;
+            return prev.map(h =>
+                h.id === editId ? { ...h, title: editHName } : h)
         });
 
         setHabitDays(prev => {
@@ -244,15 +265,27 @@ export default function Habit() {
     }
 
     // Progress bar
-    const todayHabits = habitDays.find(day =>
-        day.date === new Date().toISOString().split('T')[0]
-    )?.habits || [];
+    const formatDate = (date) =>
+        new Date(date).toISOString().split('T')[0];
+
+    const getTodayHabits = (habitDays) => {
+        if (!Array.isArray(habitDays)) return [];
+
+        const todayDateStr = formatDate(new Date());
+        return habitDays.find(day =>
+            formatDate(day.date) === todayDateStr
+        )?.habits || [];
+    };
+
+    const todayHabits = getTodayHabits(habitDays);
     const completedCount = todayHabits.filter(h => h.completed).length;
     const totalCount = todayHabits.length;
     const progressPercentage = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
 
+
+
     return (
-        <div style={{ backgroundColor: "#c5e8e8" }}>
+        <div style={{ backgroundColor: "#c5e8e8", borderRadius: "10px" }}>
             <h2 style={{ textAlign: "center" }}>Daily Habits</h2>
 
 
