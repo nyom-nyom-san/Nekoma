@@ -44,7 +44,7 @@ export default function AuthPage() {
 
 
     return (
-        <Row>
+        <Row style={{ minHeight: '100vh' }}>
             <Col sm={6}>
                 <Image src={loginImage} style={{ width: "40%", display: "block", margin: "230px" }} />
             </Col>

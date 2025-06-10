@@ -1,0 +1,14 @@
+.main-content {
+    padding: 20px;
+    width: 100%;
+    transition: margin-left 0.3s ease-in-out;
+    background-color: #e2eceb;
+    min-height: 100vh;
+    border-radius: 4px;
+}
+
+@media (min-width: 769px) {
+    .main-content {
+        margin-left: 250px;
+    }
+}

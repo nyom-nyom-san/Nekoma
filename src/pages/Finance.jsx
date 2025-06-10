@@ -1,9 +1,9 @@
 import SideBar from "../components/SideBar";
 import { Container, Row } from "react-bootstrap";
-// import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import FMidBody from "./FMidBody";
 import FLeftBody from "./FLeftBody";
+import "../Finance.css"
 export default function Finance() {
     const navigate = useNavigate();
 
@@ -22,14 +22,16 @@ export default function Finance() {
     }
 
     return (
-        <div style={{ backgroundColor: "#c5e8e8" }}>
-            <Container>
-                <Row>
-                    <SideBar handleAddBooking={handleAddBooking} home={home} finance={finance} />
-                    <FMidBody />
-                    <FLeftBody />
-                </Row>
-            </Container>
-        </div>
+        <Container fluid>
+            <Row>
+                <SideBar handleAddBooking={handleAddBooking} home={home} finance={finance} />
+                <div className="main-content" style={{ backgroundColor: "#c5e8e8" }}>
+                    <div className="finance-page-layout">
+                        <FMidBody />
+                        <FLeftBody />
+                    </div>
+                </div>
+            </Row>
+        </Container>
     )
 }

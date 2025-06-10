@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { db } from "../firebase"
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore"
+import { doc, onSnapshot } from "firebase/firestore"
 import { getAuth } from "firebase/auth"
 
 export default function HabitView() {
@@ -8,31 +8,89 @@ export default function HabitView() {
     const [sortAscending, setSortAscending] = useState(true)
 
     useEffect(() => {
-        const auth = getAuth()
-        if (!auth.currentUser) {
-            console.error("User isn't signed in")
-            return
-        }
-        const userHabitDaysRef = query(
-            collection(db, "users", auth.currentUser.uid, "habitDays"),
-            orderBy("date", "desc")
-        )
+        const authInstance = getAuth();
+        const currentUser = authInstance.currentUser;
 
-        const unsubscribe = onSnapshot(userHabitDaysRef, (snapshot) => {
-            const habitsData = snapshot.docs.map(doc => {
-                const data = doc.data();
+        if (!currentUser) {
+            console.error("HabitView: User is not signed in. Cannot fetch habits.");
+            setHabitDays([]);
+            return;
+        }
+
+        console.log(`HabitView: Setting up Firestore listener for user ${currentUser.uid} to fetch single document.`);
+        const userHabitDaysDocRef = doc(db, "users", currentUser.uid, "habitDays", "current");
+
+        const unsubscribe = onSnapshot(userHabitDaysDocRef, (docSnap) => {
+            if (!docSnap.exists()) {
+                console.log("HabitView: 'current' habit document not found for this user.");
+                setHabitDays([]);
+                return;
+            }
+
+            const documentData = docSnap.data();
+            console.log("HabitView: Raw data from 'current' document:", documentData);
+
+            let daysArrayFromDoc = [];
+            if (documentData && documentData.days && Array.isArray(documentData.days)) {
+                daysArrayFromDoc = documentData.days;
+            } else if (documentData && documentData.days && typeof documentData.days === 'object') {
+
+                console.warn("HabitView: 'days' field in 'current' document is an object. Converting to array.");
+                daysArrayFromDoc = Object.values(documentData.days);
+            } else {
+                console.log("HabitView: 'days' field is missing, not an array, or not an expected object in 'current' document.");
+                setHabitDays([]);
+                return;
+            }
+
+            console.log(`HabitView: Received ${daysArrayFromDoc.length} habit day entries from the 'days' array.`);
+
+            const processedHabitDays = daysArrayFromDoc.map((dayData, index) => {
+
+                let processedDate;
+                if (dayData.date && typeof dayData.date.toDate === 'function') {
+                    processedDate = dayData.date.toDate();
+                } else if (dayData.date) {
+                    processedDate = new Date(dayData.date);
+                    if (isNaN(processedDate.getTime())) {
+                        console.warn(`HabitView: Invalid date encountered for entry with original date ${dayData.date}. Setting date to null.`);
+                        processedDate = null;
+                    }
+                } else {
+                    console.warn(`HabitView: Missing date field for an entry in 'days' array. Setting date to null.`);
+                    processedDate = null;
+                }
+
+                const entryId = dayData.id || dayData.date || `day-${index}`;
+
                 return {
-                    id: doc.id,
-                    ...data,
-                    date: data.date?.toDate ? data.date.toDate() : new Date(data.date)
+                    id: entryId,
+                    ...dayData,
+                    date: processedDate,
                 };
             });
 
-            setHabitDays(habitsData);
+            const validHabitsData = processedHabitDays.filter(day => day.date !== null);
+            if (validHabitsData.length < processedHabitDays.length) {
+                console.warn("HabitView: Some habit entries were filtered out due to invalid/missing dates.");
+            }
+
+            validHabitsData.sort((a, b) => b.date - a.date);
+
+            console.log("HabitView: Processed habitsData to set state:", validHabitsData);
+            setHabitDays(validHabitsData);
+
+        }, (error) => {
+            console.error("HabitView: Error fetching/listening to the habit document:", error);
+            setHabitDays([]);
         });
 
-        return () => unsubscribe() //cleanup
-    }, [])
+        // Cleanup 
+        return () => {
+            console.log("HabitView: Unsubscribing from Firestore listener for single document.");
+            unsubscribe();
+        };
+    }, []);
 
     const calculateProgress = (habits) => {
         const completed = habits.filter(h => h.completed).length
@@ -48,12 +106,12 @@ export default function HabitView() {
 
     return (
         <div style={{ backgroundColor: "#c5e8e8" }}>
-            <h2>Habit History</h2>
+            <h2 style={{ margin: "20px" }}>Habit History</h2>
 
             <button
                 onClick={() => setSortAscending(prev => !prev)}
                 style={{
-                    marginBottom: "20px",
+                    margin: "20px",
                     padding: "8px 16px",
                     backgroundColor: "#093330",
                     color: "#c5e8e8",

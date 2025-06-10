@@ -1,6 +1,7 @@
 import { Col, Form, Button } from "react-bootstrap"
 import { useState } from "react"
 import { add, subtract, multiply } from "../calculator"
+import "../Finance.css"
 
 export default function FLeftBody() {
 
@@ -105,7 +106,7 @@ export default function FLeftBody() {
     }
 
     return (
-        <Col className="mt-2" style={{ backgroundColor: "white", marginLeft: "10px", borderRadius: "10px" }}>
+        <Col className="content">
             <h1>Finance Calculator</h1>
 
             <Form>
@@ -123,6 +124,7 @@ export default function FLeftBody() {
                     </Form.Select>
                 </Form.Group>
 
+
                 {/* Standard Calculations (num1 & num2) */}
                 {operation !== "simpleInterest" && operation !== "square" && operation !== "compoundInterest" && (
                     <>
@@ -138,6 +140,7 @@ export default function FLeftBody() {
                     </>
                 )}
 
+
                 {/* Simple Interest Inputs */}
                 {operation === "simpleInterest" && (
                     <>
@@ -146,10 +149,12 @@ export default function FLeftBody() {
                             <Form.Control type="number" value={principal} onChange={(e) => setPrincipal(e.target.value)} />
                         </Form.Group>
 
+
                         <Form.Group className="mb-2">
                             <Form.Label>Rate (%)</Form.Label>
                             <Form.Control type="number" value={rate} onChange={(e) => setRate(e.target.value)} />
                         </Form.Group>
+
 
                         <Form.Group className="mb-2">
                             <Form.Label>Time (Years)</Form.Label>
@@ -176,6 +181,7 @@ export default function FLeftBody() {
                             <Form.Label>Principal ($)</Form.Label>
                             <Form.Control type="number" value={principal} onChange={(e) => setPrincipal(e.target.value)} />
                         </Form.Group>
+
 
                         <Form.Group className="mb-2">
                             <Form.Label>Rate (%)</Form.Label>
@@ -204,7 +210,6 @@ export default function FLeftBody() {
                 <Button style={{ backgroundColor: "#bfd6d6", border: "none", color: "black" }} onClick={handleCalculate} className="mt-2">
                     Calculate
                 </Button>
-
                 <h3 className="mt-3">Result: {result}</h3>
             </Form>
         </Col>

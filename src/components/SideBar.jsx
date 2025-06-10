@@ -1,43 +1,39 @@
+import { useState } from "react";
 import { Col, Image } from "react-bootstrap";
 import Icons from "./Icons";
+import '../SideBar.css';
 
 export default function SideBar({ handleLogout, handleAddBooking, home, finance }) {
-    const nekoma = "/pictures/black-cat.png"
-    //const cat = "/pictures/cat.gif"
+    const nekoma = "/pictures/black-cat.png";
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+    const toggleSidebar = () => {
+        setIsSidebarOpen(!isSidebarOpen);
+    };
 
     return (
-        <Col sm={2} className="d-flex flex-column justify-content-start align-items-start vh-100 gap-3"
-            style={{
-                backgroundColor: "#508682",
-                borderRadius: "10px",
-                marginLeft: "-110px",
-                marginRight: "10px",
-                marginTop: "10px",
-                top: 0,
-                left: 0,
-                height: "100vh",
-                // zIndex: 1000,
-                // position: "fixed",
-                // top: 0,
-                // left: 0,
-                // height: "100vh",
-                // borderRadius: "10px",
-                // flexDirection: "column",
-                // alignItems: "center",
+        <>
+            {/* Hamburger menu */}
+            <div className="hamburger-menu" onClick={toggleSidebar}>
+                <i className={isSidebarOpen ? "bi bi-x" : "bi bi-list"}></i>
+            </div>
 
+            {/* Overlay for mobile */}
+            {isSidebarOpen && <div className="sidebar-overlay" onClick={toggleSidebar}></div>}
 
+            <Col sm={2} className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+                <div className="sidebar-header">
+                    <Image src={nekoma} style={{ width: "80px" }} />
+                    <i className="sidebar-title">NEKOMA</i>
+                </div>
 
-            }}>
-            <Image src={nekoma} style={{ width: "100px", marginTop: "5vh", marginBottom: "5vh" }} istop="true" />
-            <i style={{ fontSize: 30, fontWeight: "Bold" }}>NEKOMA</i>
-
-
-            <Icons className="bi bi-home" text="Home" onClick={home} />
-            <Icons className="bi bi-bookmarks" text="Habit" onClick={handleAddBooking} />
-            <Icons text="Finance" onClick={finance} />
-            <Icons className="bi bi-envelope" text="Chatbot" />
-            <Icons text="Logout" onClick={handleLogout} />
-        </Col>
-    )
+                <div className="sidebar-menu">
+                    <Icons className="bi bi-house-door" text="Home" onClick={home} />
+                    <Icons className="bi bi-journal-bookmark" text="Habit" onClick={handleAddBooking} />
+                    <Icons className="bi bi-piggy-bank" text="Finance" onClick={finance} />
+                    <Icons className="bi bi-box-arrow-right" text="Logout" onClick={handleLogout} />
+                </div>
+            </Col>
+        </>
+    );
 }
