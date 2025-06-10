@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Col, Image } from "react-bootstrap";
 import Icons from "./Icons";
-import '../SideBar.css';
+import '../Sidebar.css';
 
 export default function SideBar({ handleLogout, handleAddBooking, home, finance }) {
     const nekoma = "/pictures/black-cat.png";
