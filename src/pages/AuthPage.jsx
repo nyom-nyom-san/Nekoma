@@ -6,8 +6,8 @@ import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword } f
 
 
 export default function AuthPage() {
-    const loginImage = "/public/pictures/pawprint.gif"
-    const nekoma = "/public/pictures/black-cat.png"
+    const loginImage = "/pictures/pawprint.gif"
+    const nekoma = "/pictures/black-cat.png"
 
     const [modalShow, setModalShow] = useState(null)
     const handleShowSignUp = () => setModalShow("SignUp")

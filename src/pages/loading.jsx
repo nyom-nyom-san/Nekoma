@@ -4,7 +4,7 @@ import { Image } from "react-bootstrap";
 
 const Loading = () => {
     const navigate = useNavigate();
-    const neko = "/public/pictures/cat-playing.gif"
+    const neko = "/pictures/cat-playing.gif"
 
     useEffect(() => {
         // Simulate a loading delay (e.g., 3 seconds)
