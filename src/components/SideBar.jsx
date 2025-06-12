@@ -4,7 +4,7 @@ import Icons from "./Icons";
 import '../Sidebar.css';
 
 export default function SideBar({ handleLogout, handleAddBooking, home, finance }) {
-    const nekoma = "/pictures/black-cat.png";
+    const nekoma = "/pictures/black-cat.webp";
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const toggleSidebar = () => {
